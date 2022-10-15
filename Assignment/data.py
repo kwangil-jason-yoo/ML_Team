@@ -32,7 +32,7 @@ def train_test_split(data,labels,n=0.8): #TODO
 	for i in range(0,int(data_len[0]*0.8)):
 		for j in range(0,int(data_len[1]*0.8)):
 			X_train[i][j]=data[i][j]
-	y_train=np.zeros((int(labels_len[0]*0.8)))
+	y_train=np.zeros((int(labels_len[0]*0.8),1))
 	for i in range(0,int(labels_len[0]*0.8)):
 		y_train[i]=labels[i]
 	X_test=np.zeros((int(data_len[0]*0.2)+1,data_len[1]))
@@ -43,7 +43,7 @@ def train_test_split(data,labels,n=0.8): #TODO
 			X_test[k][l]=data[i][j]
 			l+=1
 		k+=1
-	y_test=np.zeros((int(labels_len[0]*0.2)+1))
+	y_test=np.zeros((int(labels_len[0]*0.2)+1,1))
 	k=0
 	for i in range(0, int(labels_len[0]*0.2)+1):
 		y_test[k]=labels[i]
