@@ -1,7 +1,9 @@
 from email import utils
-import os, sys
+import os
+import sys
 import numpy as np
 import math
+import matplotlib.pyplot as plt
 
 
 from data import readDataLabels, normalize_data, train_test_split, to_categorical
@@ -12,7 +14,9 @@ from utils import CrossEntropyLoss, SigmoidActivation, SoftmaxActivation, accura
 # Neuron = f(w.x + b)
 # Do forward and backward propagation
 
-mode = 'train'      # train/test... Optional mode to avoid training incase you want to load saved model and test only.
+# train/test... Optional mode to avoid training incase you want to load saved model and test only.
+mode = 'train'
+
 
 class ANN:
     def __init__(self, num_input_features, num_hidden_units, num_outputs, hidden_unit_activation, output_activation, loss_function):
@@ -24,101 +28,157 @@ class ANN:
         self.output_activation = output_activation
         self.loss_function = loss_function
 
-
     def initialize_weights(self):   # TODO
         # Create and Initialize the weight matrices
         # Never initialize to all zeros. Not Cool!!!
         # Try something like uniform distribution. Do minimal research and use a cool initialization scheme.
-        w1=np.zeros((self.num_input_features, self.num_hidden_units)) # creating matrice with zero value and then performing
-        for i in range(0,self.num_input_features):  #uniform distribution on weights
-            for j in range(0,self.num_hidden_units):
-                w1[i][j]= 1/math.sqrt(self.num_hidden_units)
-        w2=np.zeros((self.num_hidden_units, self.num_outputs))
-        for i in range(0,self.num_hidden_units):
-            for j in range(0,self.num_outputs):
-                w1[i][j]= 1/math.sqrt(self.num_outputs)
-        self.w1=w1
-        self.w2=w2
-        b1 = np.zeros((1,w1.shape[1]))
-        b2 = np.zeros((1,w2.shape[1]))
-        self.b1=b1
-        self.b2=b2
+        # creating matrice with zero value and then performing
+
+        w1 = np.zeros((self.num_input_features, self.num_hidden_units))
+        for i in range(0, self.num_input_features):  # uniform distribution on weights
+            for j in range(0, self.num_hidden_units):
+                w1[i][j] = 1/math.sqrt(self.num_hidden_units)
+
+        w2 = np.zeros((self.num_hidden_units, self.num_outputs))
+        for i in range(0, self.num_hidden_units):
+            for j in range(0, self.num_outputs):
+                w2[i][j] = 1/math.sqrt(self.num_outputs)
+
+        self.w1 = w1
+        self.w2 = w2
+
+        b1 = np.zeros((1, w1.shape[1]))
+        b2 = np.zeros((1, w2.shape[1]))
+
+        self.b1 = b1
+        self.b2 = b2
+
+        self.loss_list = []
+        self.accuracy_list = []
 
         return w1, w2, b1, b2
 
-    def forward(self,x):      # TODO
+    def forward(self, x):      # TODO
         # x = input matrix
         # hidden activation y = f(z), where z = w.x + b
         # output = g(z'), where z' =  w'.y + b'
         # Trick here is not to think in terms of one neuron at a time
         # Rather think in terms of matrices where each 'element' represents a neuron
         # and a layer operation is carried out as a matrix operation corresponding to all neurons of the layer
-        y1= np.dot(x,self.w1) + self.b1
-        z1=self.hidden_unit_activation(y1)
-        y2=np.dot((z1,self.w2)) + self.b2
-        y_pred=self.output_activation(y2)
-        self.y_pred =y_pred
-        
+        self.x = x
+        self.y1 = np.dot(x, self.w1) + self.b1
+        self.z1 = self.hidden_unit_activation.__call__(self.y1)
+        self.y2 = np.dot(self.z1, self.w2) + self.b2
+        self.y_pred = self.output_activation.__call__(self.y2)
+        # print(self.y_pred)
+        # print(self.y_pred)
 
-    def backward(self,y_gt):     #TODO
-        #y_gt.reshape(y_gt.shape[0],1)
-        #dummy=np.zeros((self.y_pred.shape[0],self.y_pred.shape[1]-1))
-        #y_gt=np.concatenate((y_gt,dummy), axis=1)
-        #loss=np.zeros((y_gt.shape[0],1))
-#
-        #for i in range(y_gt.shape[0]):
-        #    y=max(self.y_pred[i])
-        #    loss[i]=self.loss_function(y,y_gt[i])
-        pass
+        # print(self.w1)
 
-        
+        return
+
+    def backward(self, y_gt):  # TODO
+
+        self.y_gt = y_gt
+        loss = self.loss_function(self.y_pred, self.y_gt)
+        self.accuracy_list.append(accuracy_score(self.y_gt, self.y_pred))
+        self.loss_list.append(np.sum(loss))
+        loss_gradient = self.loss_function.grad()
+
+        grad_z = self.output_activation.__grad__()
+        y2_gradient = np.dot(grad_z, loss_gradient)
+        #y2_gradient = loss_gradient * grad_z
+
+        w2_gradient = np.dot(np.transpose(self.z1), y2_gradient)
+        b2_gradient = np.sum(y2_gradient, axis=0)
+
+        z1_gradient = np.dot(y2_gradient, np.transpose(self.w2))
+        # self.hidden_unit_activation(self.y1)
+        incoming_gradient = self.hidden_unit_activation.__grad__() * z1_gradient
+        w1_gradient = np.dot(np.transpose(self.x), incoming_gradient)
+        b1_gradient = np.sum(incoming_gradient, axis=0)
+
+        self.w2_gradient = w2_gradient
+        self.b2_gradient = b2_gradient
+
+        self.w1_gradient = w1_gradient
+        self.b1_gradient = b1_gradient
+        # print(w1_gradient)
+        # self.output_activation.__grad__()
+        return
 
     def update_params(self):    # TODO
         # Take the optimization step.
+
+        self.w1 -= self.learning_rate * self.w1_gradient
+        self.w2 -= self.learning_rate * self.w2_gradient
+        self.b1 -= self.learning_rate * self.b1_gradient
+        self.b2 -= self.learning_rate * self.b2_gradient
+        
+
         return
 
-    def train(self, dataset, learning_rate=0.01, num_epochs=100):
+    def train(self, dataset, labels, learning_rate=0.1, num_epochs=10):
+        self.learning_rate = learning_rate
         for epoch in range(num_epochs):
-            pass
+            print(epoch)
 
-    def test(self, test_dataset):
+            self.forward(dataset)
+            self.backward(labels)
+            self.update_params()
+            print(self.accuracy_list[epoch])
+        print(max(self.accuracy_list))
+        #plt.plot(self.accuracy_list)
+        
+
+        return
+
+    def test(self, test_dataset, test_labels):
         accuracy = 0    # Test accuracy
         # Get predictions from test dataset
         # Calculate the prediction accuracy, see utils.py
+
+        #y1 = np.dot(test_dataset, self.w1) + self.b1
+        #z1 = self.hidden_unit_activation.__call__(y1)
+        #y2 = np.dot(z1, self.w2) + self.b2
+        #y_pred = self.output_activation.__call__(y2)
+#
+        #accuracy = accuracy_score(test_labels, y_pred)
+
         return accuracy
 
 
 def main(argv):
-    
 
     # Load dataset
     dataset = readDataLabels()      # dataset[0] = X, dataset[1] = y
     data, labels = dataset[0], dataset[1]
     # Split data into train and test split. call function in data.py
     data = normalize_data(data)
-    labels=to_categorical(labels)
-    dataset=data, labels
-    X_train, y_train, X_test, y_test = train_test_split(data, labels,0.8)
-    print(X_train.shape)
-    print(y_train.shape)
-    print(X_test.shape)
-    print(y_test.shape)
+    labels = to_categorical(labels)
+    dataset = data, labels
+    X_train, y_train, X_test, y_test = train_test_split(data, labels, 0.8)
+    print('Shape of X_train is :', X_train.shape)
+    print('Shape of y_train is :', y_train.shape)
+    print('Shape of X_test is :', X_test.shape)
+    print('Shape of y_test is :', y_test.shape)
     sigmoid = SigmoidActivation()
     softmax = SoftmaxActivation()
     loss_function = CrossEntropyLoss()
     # call ann->train()... Once trained, try to store the model to avoid re-training everytime
     if mode == 'train':
-        ann = ANN(X_train.shape[1],16,10,sigmoid,softmax,loss_function)         # Call ann training code here
+        # Call ann training code here
+        ann = ANN(X_train.shape[1], 16, 10, sigmoid, softmax, loss_function)
         w1, w2, b1, b2 = ann.initialize_weights()
-        y_pred = ann.forward(X_train)
-        loss=loss_function(y_pred,y_train)
-        #ann.train(dataset)
+        ann.train(X_train, y_train, )
+        
 
     else:
         # Call loading of trained model here, if using this mode (Not required, provided for convenience)
         raise NotImplementedError
 
     # Call ann->test().. to get accuracy in test set and print it.
+    # print(ann.test(X_test, y_test))
 
 
 if __name__ == "__main__":

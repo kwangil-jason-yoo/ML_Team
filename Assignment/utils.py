@@ -38,25 +38,25 @@ class CrossEntropyLoss:     # TODO: Make this work!!!
 
     def __call__(self, y_pred, y_gt):
         # TODO: Calculate Loss Function
+
         self.current_prediction = y_pred
         self.current_gt = y_gt
-        loss=np.zeros((y_gt.shape[0],1))
-        for i in range(0,y_gt.shape[0]):
-            sum=0
-            for j in range(y_gt.shape[1]):
-                sum+=y_gt[i][j] * math.log(y_pred[i][j],2)
-            loss[i][1]=-1*sum
+        
+        y_pred = np.clip(y_pred, 1e-15, 1 - 1e-15)
+        loss = - y_gt * np.log(y_pred) - (1 - y_gt) * np.log(1 - y_pred)
+
         
         return loss
 
     def grad(self):
         # TODO: Calculate Gradients for back propagation
-        loss_gradient = np.zeros((self.current_gt.shape[0],1))
-        for i in range(0,self.current_gt.shape[0]):
-            sum=0
-            for j in range(self.current_gtt.shape[1]):
-                sum+=self.current_gt[i][j] / self.current_prediction[i][j]
-            loss_gradient[i][1]=-1*sum
+        
+        self.current_prediction = np.clip(self.current_prediction, 1e-15, 1 - 1e-15)
+        loss_gradient = - (self.current_gt / self.current_prediction) + (1 - self.current_gt) / (1 - self.current_prediction)
+
+        self.current_prediction = None
+        self.current_gt = None
+
         return loss_gradient
 
 
@@ -69,12 +69,18 @@ class SoftmaxActivation:    # TODO: Make this work!!!
         # TODO: Calculate Activation Function
         #f(y)= exp(y)/Sum(exp(y))
         self.y=y
-        z=np.zeros((y.shape[0],y.shape[1]))
-        for i in range(0,y.shape[0]):
-            exp_sum_y=sum(np.exp(y[i]))
-            for j in range(0,y.shape[1]):
-                exp_y= np.exp(y[i][j])
-                z[i][j]=exp_y/exp_sum_y
+        #z=np.zeros((y.shape[0],y.shape[1]))
+        exp_y=np.exp(y - np.max(y))
+        exp_sum = np.sum(exp_y, axis=0, keepdims=True)
+        z = exp_y /exp_sum
+        #for i in range(0,y.shape[0]):
+        #    exp_y = np.exp(y[i] - np.max(y[i]))
+        #    exp_sum = np.sum(exp_y)
+        #    exp_sum_y=np.sum(np.exp(y[i]))
+        #    for j in range(0,y.shape[1]):
+        #        exp_y= np.exp(y[i][j])
+        #        z[i][j]=exp_y/exp_sum
+        #    z[i] = exp_y /exp_sum
         self.z_soft=z
 
         return z
@@ -82,14 +88,23 @@ class SoftmaxActivation:    # TODO: Make this work!!!
 
     def __grad__(self):
         # TODO: Calculate Gradients.. Remember this is calculated w.r.t. input to the function -> dy/dz
-        z=self.y
-        grad_z=np.zeros((z.shape[0],z.shape[1]))
-        for i in range(0, z.shape[0]):
-            for j in range(0, z.shape[1]):
+        y=self.z_soft
+        z=y.max(1)
+        
+        z_max = np.reshape(z, (z.shape[0],1))
+
+        grad_z=np.zeros((z_max.shape[0],z_max.shape[0]))
+        for i in range(0, z_max.shape[0]):
+            for j in range(0, z_max.shape[0]):
                 if i == j:
-                    grad_z[i][j]= z[i][j] * (1-z[i][j])
+                    grad_z[i][j]= z_max[i][0] * (1 - z_max[i][0])
                 elif i != j:
-                    grad_z[i][j]= -z[i][j] * z[i+1][j]
+                    grad_z[i][j]= -z_max[i][0] * z_max[j][0]
+        
+        #grad_z = np.sum(grad_z, axis=1, keepdims=True)
+        #out_grad_z = np.repeat(grad_z, repeats=y.shape[1], axis=1)
+        self.grad_z=grad_z
+        return grad_z
 
 
 class SigmoidActivation:    # TODO: Make this work!!!
@@ -101,21 +116,25 @@ class SigmoidActivation:    # TODO: Make this work!!!
         # TODO: Calculate Activation Function
         #f(y)=exp(y)/(exp(y)+1)
         self.y =y
-        y_length= y.shape
-        z=np.zeros((y_length[0],y_length[1]))
-        for i in range(0,y_length[0]):
-            for j in range(0,y_length[1]):
-                z[i][j]= np.exp(y[i][j])/(np.exp(y[i][j]) + 1)
+        #y_length= y.shape
+        #z=np.zeros((y_length[0],y_length[1]))
+        #for i in range(0,y_length[0]):
+        #    for j in range(0,y_length[1]):
+        #        z[i][j]= np.exp(y[i][j])/(np.exp(y[i][j]) + 1)
+        z = 1 / (1 + np.exp(-y))
+        self.z = z
         return z
 
     def __grad__(self):
         # TODO: Calculate Gradients.. Remember this is calculated w.r.t. input to the function -> dy/dz
-        #gradient = exp(-y) / (1+exp(-y))^2
+        
         y_length= self.y.shape
         gradient=np.zeros((y_length[0],y_length[1]))
-        for i in range(0,y_length[0]):
-            for j in range(0,y_length[1]):
-                gradient[i][j] = np.exp(-self.y[i][j]) / (np.power((1 + np.exp(-self.y[i][j])),2))
+        #for i in range(0,y_length[0]):
+        #    for j in range(0,y_length[1]):
+        #        gradient[i][j] = np.exp(-self.y[i][j]) / (np.power((1 + np.exp(-self.y[i][j])),2))
+        gradient = (1 / (1 + np.exp(-self.y))) * (1 - (1 / (1 + np.exp(-self.y))))
+        self.gradient=gradient
         return gradient
 
 
@@ -138,5 +157,7 @@ class ReLUActivation:
 
 def accuracy_score(y_true, y_pred):
     """ Compare y_true to y_pred and return the accuracy """
+    y_pred = np.argmax(y_pred, axis=1)
+    y_true = np.argmax(y_true, axis=1)
     accuracy = np.sum(y_true == y_pred, axis=0) / len(y_true)
     return accuracy

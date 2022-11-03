@@ -48,8 +48,8 @@ def normalize_data(data): #TODO
 	data_norm = (data - np.amin(data))/(np.amax(data) - np.amin(data))
 	return data_norm
 
-data, labels = readDataLabels()
-print(data.shape, labels.shape)
+#data, labels = readDataLabels()
+#print(data.shape, labels.shape)
 
 
 
