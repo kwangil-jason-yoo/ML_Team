@@ -18,14 +18,12 @@ def readDataLabels():
 def to_categorical(y):
 	
 	#Convert the nominal y values tocategorical
-	uniques=np.unique(y)
-	y_cat=np.zeros((y.shape[0], np.amax(y)+1))
-	for i in range(uniques.shape[0]):
-		for j in range(y.shape[0]):
-			if uniques[i]==y[j]:
-				y_cat[j,i]=1
 	
-
+	y_cat=np.zeros((y.shape[0], np.amax(y)+1))
+		
+	for i in range(y.shape[0]):
+		sample = y[i]
+		y_cat[i, int(sample)] = 1
 	return y_cat
 	
 def train_test_split(data,labels,n): #TODO
@@ -45,8 +43,12 @@ def train_test_split(data,labels,n): #TODO
 def normalize_data(data): #TODO
 
 	# normalize/standardize the data
-	data_norm = (data - np.amin(data))/(np.amax(data) - np.amin(data))
-	return data_norm
+
+	l2 = np.atleast_1d(np.linalg.norm(data, ord=2, axis=1))
+	l2[l2 == 0] = 1
+	return data / np.expand_dims(l2, axis=1)
+	
+	
 
 #data, labels = readDataLabels()
 #print(data.shape, labels.shape)
